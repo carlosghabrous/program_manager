@@ -1,0 +1,51 @@
+SUMMARY
+
+* __init__.py ?
+* Add threads to thread list programatically? -> OK
+* Decide main threads activities -> OK
+* PM should
+** detect FGC3s with flag on at start up -> OK
+** get detected info and store it in DB
+** get expected info from DB, cache it in memory
+** compare expected vs detected
+** set converter in fault in case boards are !=, or variants are !=
+** go back and try program board if applicable
+* How to prevent PM to override action done by the programmer? -> OK, namedb
+
+TODO
+* use configuration file
+* organize the way connections are created/shared
+* Test setup.py (distribution data folder)
+* REGFGC3.PROG.STATE: set according to FGC operational or not
+* get expected from DB
+* Implement REGFGC3.PROG.MODE?
+* Rescan crate after setting all boards to production boot mode
+* Remove "to production boot" state in prog FSM. This should only be done once after everything has been reprogrammed, not per device. 
+
+WORKING ON
+* Test PM states work (SYNC, UNSYNC and STANDALONE)
+
+DONE
+* Display unknown board in SLOT_INFO if necessary
+* Display variant name instead of number in SLOT_INFO
+* get expected from file system
+* Automatic raise SYNC_REGFGC3
+* Test sync flag detection with FGCs
+* PROG_STATE: does it need a set function? It looks like it could just do with a get and set values on the variable internally
+* Bug: workers do not seem to stop gracefully if exception during _programming_job
+* refactor AreaProgramManager and put workers code elsewhere
+* programmer: add "magic" recovery (in case an fgc is not at waiting at the beginning)
+* pm_fsm: connection should not be opened in 'process_mode', but in 'process' (or passed to it). For this, 
+'process_mode' should not be called from the 'mode' setter. The interface with the FSM should be via 'process'. 
+* refactor pm_fsm taking into account all states (intermediate too)
+* Test RegFgc3 programmer with FGC3
+* programmer: in standalone, open just once one connection to the target FGC
+* remove duplication max attempts (in programmer 'program' and 'AreaProgramManager')
+* pm_main.py
+* Use logging.exception from exception handlers
+* Use logging without passing object across different modules
+* parse slot_info
+* tests FSM with mock
+* FSM - state implementation
+* FSM - skeleton
+* Test start/stop service
