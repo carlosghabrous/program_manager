@@ -8,10 +8,8 @@ import time
 import pyfgc
 import pyfgc_name
 import pyfgc_statussrv
-
 from program_manager.area_worker import AreaProgramManager
 from program_manager.area_worker import fgc_work
-
 
 ITERATION_STATUS_SRV_SEC = 5
 STATUS_SRV_REFRESH_SEC = 5
@@ -36,6 +34,7 @@ def filter_jobs(status_rsp):
             for dev in status_rsp[gw]["devices"].keys():
                 try:
                     if "SYNC_REGFGC3" in status_rsp[gw]["devices"][dev]["ST_UNLATCHED"]:
+                        # res.append(dev)
                         device_obj = pyfgc_name.devices[dev]
                         yield dev, pyfgc_name.gateways[device_obj["gateway"]]["groups"][0]
                 
@@ -44,11 +43,11 @@ def filter_jobs(status_rsp):
 
 class ProgramManagerServer():
     def __init__(self, **kwargs):
-        self.name_file     = kwargs["name_file"]
-        self.fw_repo_loc   = kwargs["fw_repo_loc"]
-        self.expected_data = kwargs["expected_data"]
-        self.adapter_data  = kwargs["adapter_data"]
-                
+        self.name_file      = kwargs["name_file"]
+        self.fw_repo_loc    = kwargs["fw_repo_loc"]
+        self.expected_data  = kwargs["expected_data"]
+        self.db_data        = kwargs["db_data"]
+        
         self._run           = threading.Event()
         self._area_pms      = dict()
         
@@ -63,7 +62,7 @@ class ProgramManagerServer():
 
         for area in pyfgc_name.groups.keys():
             self._logger.info(f"Starting AreaProgramManager({area})")
-            self._area_pms[area] = AreaProgramManager(area, self.expected_data, self.adapter_data)
+            self._area_pms[area] = AreaProgramManager(area)
                 
         while not self._run.is_set():
             if not self._status_srv_conn:
@@ -71,18 +70,15 @@ class ProgramManagerServer():
 
             try:
                 fgcds = pyfgc_statussrv.get_status_all(fgc_session=self._status_srv_conn)
+                for dev, area in filter_jobs(fgcds):
+                    self._area_pms[area].add_job(fgc_work, dev)
+
+                time.sleep(ITERATION_STATUS_SRV_SEC)
 
             except pyfgc.PyFgcError as e:
                 self._logger.warning(f"Error in ProgramManagerServer: {e}")
                 self._clean_status_srv_connection()
-                fgcds = dict()
-            
-            for device, area in filter_jobs(fgcds):
-                self._area_pms[area].add_job(fgc_work, device)
-
-            time.sleep(ITERATION_STATUS_SRV_SEC)
-
-            
+                
     def _get_status_srv_connection(self):
         try:
             #TODO: delay throwing exceptions in pyfgc, but throw them

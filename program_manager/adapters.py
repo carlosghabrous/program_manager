@@ -2,7 +2,7 @@ import logging
 import os
 from collections import namedtuple
 
-def get_adapter(adapter, adapter_data):
+def getAdapter(adapter, adapter_data):
     if adapter == "db":
         return DbAdapter(*adapter_data)
 
@@ -30,22 +30,23 @@ class Adapter:
 
 
 class DbAdapter(Adapter):
-    #TODO: use Borg idiom to share state?
     RELEASE_INFO_TABLE    = ""
     RECORD_DETECTED_TABLE = ""
+
     
     def __init__(self, connection_string, username, password, fw_file_loc):
         self._logger = logging.getLogger("pm_main." + __name__)
         self._logger.info(f"Adapter {type(self).__name__} created")
 
-    def get_detected(self):
-        raise NotImplementedError
+#     def get_detected(self):
+#         raise NotImplementedError
 
-    def get_expected(self):
-        raise NotImplementedError
+#     def get_expected(self):
+#         self._logger.info("Got expected data from DB")
+#         pass
 
-    def record_detected(self):
-        raise NotImplementedError
+#     def record_detected(self):
+#         pass
 
 class FileSystemAdapter(Adapter):
     def __init__(self, fw_subfolder, db_subfolder, fw_file_loc):
@@ -85,7 +86,7 @@ class FileSystemAdapter(Adapter):
 
 
     def record_detected(self):
-        raise NotImplementedError
+        pass
 
     def _parse_expected_file(self, file_name):
         #TODO: protect access to file? One thread should only access one file, so might not be needed

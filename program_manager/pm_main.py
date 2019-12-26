@@ -42,7 +42,7 @@ def start_pm(log, config_info):
         pms = ProgramManagerServer(name_file     = config_info["name_file"],
                                    fw_repo_loc   = config_info["fw_repo_loc"],
                                    expected_data = config_info["expected_data"],
-                                   adapter_data  = config_info["adapter_data"])
+                                   db_data       = config_info["db_data"])
         pms.start()
     
     except ProgramManagerTermError:
@@ -85,30 +85,20 @@ def configure_logger(verbosity, log_file_name):
 def read_config_file(config_file_name:str) -> None:
     config = SafeConfigParser()
     config.read(args["--config-file"])
-
     name_file     = config.get("BASIC", "name_file_location")
-    fw_repo_loc   = config.get("BASIC", "fs_fw_repo_location")
+    fw_repo_loc   = config.get("BASIC", "fw_repo_location")
     expected_data = config.get("BASIC", "expected_data_location")
     log_file_name = config.get("BASIC", "pm_log_file_name")
-
     conn_string, username, password = [""] * 3
-    fw_subfolder, db_subfolder      = [""] * 2
 
     if expected_data == "db":
-        conn_string  = config.get("db", "connection_string")
-        username     = config.get("db", "username")
-        password     = config.get("db", "password")
-        adapter_data = [conn_string, username, password]
+        conn_string = config.get("db", "connection_string")
+        username    = config.get("db", "username")
+        password    = config.get("db", "password")
 
-    if expected_data == "fs":
-        fw_subfolder = config.get("fs", "fw_subfolder")
-        db_subfolder = config.get("fs", "db_subfolder")
-        adapter_data = [fw_subfolder, db_subfolder]
-
-    adapter_data.append(fw_repo_loc)
     config_file_dict = dict(zip(
-                                ("name_file", "fw_repo_loc", "log_file_name", "expected_data", "adapter_data"),
-                                (name_file,    fw_repo_loc,   log_file_name,   expected_data,  tuple(adapter_data))
+                                ("name_file", "fw_repo_loc", "log_file_name", "expected_data", "db_data"),
+                                (name_file,    fw_repo_loc,   log_file_name,   expected_data,  (conn_string,username,password))
                                 )
                             )
     

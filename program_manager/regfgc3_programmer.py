@@ -82,14 +82,14 @@ def _run_security_checks(cmd_info, fgc_info, fw_file_loc, loose_option):
         assert cmd_info.board == fgc_info.board
 
     except AssertionError:
-        _module_logger.critical(f"Command line board {cmd_info.board} is different than fgc board {fgc_info.board}. Board programming NOT ALLOWED! Exiting...")
+        _module_logger.critical(f"Command line board {cmd_info.board} is different than fgc board {fgc_info.board}. board programming NOT ALLOWED! Exiting...")
         sys.exit(2)
 
     try:
         assert fgc_info.device == cmd_info.device
 
     except AssertionError:
-        _module_logger.critical(f"Command line device {cmd_info.device} is different than fgc device {fgc_info.device}. Board programming NOT ALLOWED! Exiting...")
+        _module_logger.critical(f"Command line device {cmd_info.device} is different than fgc device {fgc_info.device}. board programming NOT ALLOWED! Exiting...")
         sys.exit(2)
 
     # Variant
@@ -142,26 +142,19 @@ def _get_fgc_detected(converter, slot, device):
 
     boards = parse_slot_info(slot_info)
     board, dev, variant, var_rev, api_rev = [""] * 5
+    for b in boards:
+        if b.SLOT == slot:
+            if not check_board_in_download_boot(b):
+                _module_logger.error(f"Board {b.BOARD} is not running in DownloadBoot!")
+                sys.exit(1)
 
-    try:
-        b = boards[slot]
-    
-    except KeyError:
-        _module_logger.error(f"Board not found in slot {slot}!")
-        sys.exit(1)
+            board = b.BOARD
+            break
 
-    if not is_board_in_download_boot(b):
-        _module_logger.error(f"Board {b['board']} is not running in DownloadBoot!")
-        sys.exit(1)
-
-    try:
-        device = b["devices"][device]
-
-    except KeyError:
-        _module_logger.error(f"Device {device} not found in slot {slot}, board {b['board']}!")
-        sys.exit(1)
-
-    board, dev, variant, var_rev, api_rev = b["board"], device.Device, device.Variant, device.Var_Rev, device.API_Rev
+    for d in b.devices:
+        if d.Device == device:
+            dev, variant, var_rev, api_rev = d.Device, d.Variant, d.Var_Rev, d.API_Rev
+            break
 
     return board, dev, variant, var_rev, api_rev
 
@@ -170,7 +163,7 @@ def _parse_single_slot(single_slot):
     Device  = namedtuple("Device", "Device, Variant, Var_Rev, API_Rev")
 
     single_slot.pop()
-    devices          = dict()
+    devices          = list()
     board_info_dict  = dict()
 
     dev_pos = [i for i, element in enumerate(single_slot) if element.startswith("Device")]
@@ -182,8 +175,7 @@ def _parse_single_slot(single_slot):
             single_device_info = single_slot[idx_tuple[0]:idx_tuple[1]]
 
         device_dict = dict([el.split() for el in single_device_info if el.strip()])
-        dev = Device(**device_dict)
-        devices.update({dev.Device: dev})
+        devices.append(Device(**device_dict))
 
     board_info_dict = dict([el.split() for el in single_slot[0:3]])
     board_info_dict["devices"] = devices
@@ -239,26 +231,17 @@ def _check_file_consistency(cmd_variant, cmd_device, cmd_var_revision, fw_file_l
     if rev != cmd_var_revision:
         raise AssertionError(f"File revision {rev} is different than cmd input revision {cmd_var_revision}")
 
-def is_board_in_download_boot(board):
-    if board["state"] != "DownloadBoot":
+def check_board_in_download_boot(board):
+    for device in board.devices:
+        if device.Device == "DB" and int(device.Variant) == 3:
+            return True
+    else:
         return False
-
-    try:
-        db_device = board["devices"]["DB"]
-
-    except KeyError:
-        return False
-
-    if db_device.Variant != "DOWNLDBOOT_3":
-        return False
-
-    return True 
 
 def parse_slot_info(slot_info_reply):
-    si_list        = slot_info_reply.split(",")
+    si_list = slot_info_reply.split(",")
     slot_start_pos = [idx for idx, element in enumerate(si_list) if element.startswith("SLOT")]
-    boards         = dict()
-    
+    boards = list()
     for i in range(len(slot_start_pos)):
         idx_tuple = slot_start_pos[i : i+2]
         if len(idx_tuple) == 1:
@@ -266,8 +249,7 @@ def parse_slot_info(slot_info_reply):
         else:
             single_slot_info = si_list[idx_tuple[0]:idx_tuple[1]]
 
-        slot_dict = _parse_single_slot(single_slot_info)
-        boards.update({slot_dict.SLOT:{"board":slot_dict.BOARD, "state":slot_dict.STATE, "devices":slot_dict.devices}})
+        boards.append(_parse_single_slot(single_slot_info))
     
     return boards
 
